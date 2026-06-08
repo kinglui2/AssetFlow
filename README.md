@@ -20,7 +20,6 @@ Examples include:
 
 - Laptops
 - Projectors
-- Monitors
 - Keyboards
 - Mice
 - Network Devices
