@@ -171,23 +171,24 @@ Responsibilities:
 - Vite
 - Tailwind CSS
 
-### Backend
+### Backend & Database (Supabase)
 
-- Node.js
-- Express.js
+AssetFlow uses [Supabase](https://supabase.com) as the hosted backend and database platform. This removes the need to run a local SQL server and keeps the system deployment-ready from the start.
 
-### Database
-
-- MySQL
-
-### Authentication
-
-- JSON Web Tokens (JWT)
+- **Database**: PostgreSQL (hosted on Supabase)
+- **API**: Supabase auto-generated REST API and Edge Functions for custom server logic
+- **Authentication**: Supabase Auth (JWT-based)
+- **Migrations**: Supabase SQL migrations for schema management
 
 ### Version Control
 
 - Git
 - GitHub
+
+### Deployment
+
+- **Backend & Database**: Supabase (cloud-hosted)
+- **Frontend**: Static hosting (e.g. Vercel, Netlify, or similar)
 
 ---
 
@@ -201,15 +202,10 @@ AssetFlow/
 │   ├── public/
 │   └── package.json
 │
-├── backend/
-│   ├── src/
-│   ├── routes/
-│   ├── controllers/
-│   ├── models/
-│   └── package.json
-│
-├── database/
-│   └── schema.sql
+├── supabase/
+│   ├── migrations/
+│   ├── functions/
+│   └── config.toml
 │
 ├── docs/
 │   ├── Project-Overview.md
@@ -254,7 +250,9 @@ AssetFlow/
 
 ### Phase 5 - Deployment
 
-- Production Setup
+- Supabase project setup (production database and backend)
+- Frontend deployment to hosting platform
+- Environment configuration
 - User Training
 - System Launch
 
