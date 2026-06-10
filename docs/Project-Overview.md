@@ -21,7 +21,7 @@ The system provides a web-based interface for ICT staff to manage equipment inve
 
 ## 2. Background
 
-The ICT Department manages a wide range of equipment borrowed frequently by staff across departments, including laptops, projectors, peripherals, network devices, and testing equipment.
+The ICT Department manages a wide range of equipment borrowed frequently by staff across departments, including laptops, projectors, peripherals, network devices, JBL,, PA system and testing equipment.
 
 Records are currently maintained in a physical logbook. This approach is functional but creates operational challenges: slow record retrieval, limited visibility into asset availability, manual report generation, and no reliable audit trail.
 

@@ -477,7 +477,8 @@ CREATE POLICY "Admins can view audit logs"
 Convenience view joining borrowing records with equipment and category details.
 
 ```sql
-CREATE VIEW active_borrowings AS
+CREATE VIEW active_borrowings
+WITH (security_invoker = true) AS
 SELECT
   br.id,
   br.borrower_name,
@@ -500,7 +501,8 @@ WHERE br.status IN ('active', 'overdue');
 ### 8.2 `equipment_summary`
 
 ```sql
-CREATE VIEW equipment_summary AS
+CREATE VIEW equipment_summary
+WITH (security_invoker = true) AS
 SELECT
   c.name AS category,
   e.status,
