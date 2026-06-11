@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import AssetflowRightRail from './AssetflowRightRail.jsx'
 import { isAdmin, navItemsByRole } from '../../config/navigation.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
+const SHOW_SUPPORT_RAIL = false
 
 const SCHOOL_LOGO =
   'https://static.wixstatic.com/media/57fa13_baa64a5d85284931bdb412f4022c84db~mv2.jpg/v1/fill/w_284,h_284,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/Mirema%20School%20Logo.jpg'
@@ -183,7 +184,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
 
-        {showSupportRail && <AssetflowRightRail />}
+        {SHOW_SUPPORT_RAIL && showSupportRail && <AssetflowRightRail />}
       </div>
     </div>
   )
