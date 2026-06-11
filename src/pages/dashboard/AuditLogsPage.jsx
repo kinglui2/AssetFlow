@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import PageHeader from '../../components/ui/PageHeader.jsx'
+import Pagination, { DEFAULT_PAGE_SIZE } from '../../components/ui/Pagination.jsx'
 import { dataTable, filterInput, filterSelect, tableWrap } from '../../lib/formStyles.js'
 import { supabase } from '../../lib/supabase.js'
 
@@ -30,17 +31,27 @@ const actionOptions = [
   'borrow_request_rejected'
 ]
 
+function formatDetails(details) {
+  if (!details || typeof details !== 'object') return '—'
+  return Object.entries(details)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' · ')
+}
+
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState([])
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
   const [filters, setFilters] = useState({
     userId: '',
     action: '',
     dateFrom: '',
     dateTo: ''
   })
+  const [appliedFilters, setAppliedFilters] = useState(filters)
 
   useEffect(() => {
     supabase
@@ -54,26 +65,39 @@ export default function AuditLogsPage() {
     setLoading(true)
     setError('')
 
+    const from = (page - 1) * DEFAULT_PAGE_SIZE
+    const to = from + DEFAULT_PAGE_SIZE - 1
+
     let query = supabase
       .from('audit_logs')
-      .select('id, action, entity_type, entity_id, details, created_at, profiles(full_name, email)')
+      .select('id, action, entity_type, entity_id, details, created_at, profiles(full_name, email)', {
+        count: 'exact'
+      })
       .order('created_at', { ascending: false })
-      .limit(200)
+      .range(from, to)
 
-    if (filters.userId) query = query.eq('user_id', filters.userId)
-    if (filters.action) query = query.eq('action', filters.action)
-    if (filters.dateFrom) query = query.gte('created_at', `${filters.dateFrom}T00:00:00`)
-    if (filters.dateTo) query = query.lte('created_at', `${filters.dateTo}T23:59:59`)
+    if (appliedFilters.userId) query = query.eq('user_id', appliedFilters.userId)
+    if (appliedFilters.action) query = query.eq('action', appliedFilters.action)
+    if (appliedFilters.dateFrom) query = query.gte('created_at', `${appliedFilters.dateFrom}T00:00:00`)
+    if (appliedFilters.dateTo) query = query.lte('created_at', `${appliedFilters.dateTo}T23:59:59`)
 
-    const { data, error: fetchError } = await query
+    const { data, error: fetchError, count } = await query
     if (fetchError) setError(fetchError.message)
-    else setLogs(data ?? [])
+    else {
+      setLogs(data ?? [])
+      setTotalCount(count ?? 0)
+    }
     setLoading(false)
-  }, [filters])
+  }, [page, appliedFilters])
 
   useEffect(() => {
     loadLogs()
   }, [loadLogs])
+
+  function applyFilters() {
+    setPage(1)
+    setAppliedFilters({ ...filters })
+  }
 
   return (
     <div>
@@ -141,7 +165,7 @@ export default function AuditLogsPage() {
         </div>
         <button
           type="button"
-          onClick={loadLogs}
+          onClick={applyFilters}
           className="mt-4 w-full rounded-xl bg-brandAmber-500 px-4 py-2 text-sm font-semibold text-black hover:bg-brandAmber-400 sm:w-auto"
         >
           Apply Filters
@@ -153,11 +177,11 @@ export default function AuditLogsPage() {
           <table className={dataTable}>
             <thead className="bg-black/20 text-left text-white/60">
               <tr>
-                <th className="px-4 py-3 font-medium">Timestamp</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">Timestamp</th>
                 <th className="px-4 py-3 font-medium">User</th>
                 <th className="px-4 py-3 font-medium">Action</th>
                 <th className="px-4 py-3 font-medium">Entity</th>
-                <th className="px-4 py-3 font-medium">Details</th>
+                <th className="px-4 py-3 font-medium min-w-[12rem]">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -178,23 +202,35 @@ export default function AuditLogsPage() {
               {!loading &&
                 logs.map((log) => (
                   <tr key={log.id} className="border-t border-white/10 text-white/85">
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm">
                       {new Date(log.created_at).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3">{log.profiles?.full_name || '—'}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{log.action}</td>
                     <td className="px-4 py-3">
-                      {log.entity_type || '—'}
-                      {log.entity_id ? ` · ${log.entity_id.slice(0, 8)}…` : ''}
+                      <div className="text-sm">{log.profiles?.full_name || '—'}</div>
+                      {log.profiles?.email && (
+                        <div className="text-xs text-white/50">{log.profiles.email}</div>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-white/60 max-w-xs truncate">
-                      {log.details ? JSON.stringify(log.details) : '—'}
+                    <td className="px-4 py-3">
+                      <span className="inline-block rounded-md bg-white/5 px-2 py-0.5 font-mono text-xs text-brandAmber-200">
+                        {log.action}
+                      </span>
                     </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div>{log.entity_type || '—'}</div>
+                      {log.entity_id && (
+                        <div className="text-xs text-white/50 font-mono">{log.entity_id.slice(0, 8)}…</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-white/60">{formatDetails(log.details)}</td>
                   </tr>
                 ))}
             </tbody>
           </table>
         </div>
+        {!loading && totalCount > 0 && (
+          <Pagination page={page} totalCount={totalCount} onPageChange={setPage} />
+        )}
       </div>
     </div>
   )

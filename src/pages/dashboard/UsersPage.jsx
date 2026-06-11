@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import PageHeader from '../../components/ui/PageHeader.jsx'
 import Modal from '../../components/ui/Modal.jsx'
+import Pagination from '../../components/ui/Pagination.jsx'
 import StatusBadge from '../../components/ui/StatusBadge.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { useClientPagination } from '../../hooks/useClientPagination.js'
 import { logAudit } from '../../lib/audit.js'
 import { dataTable, formFieldInput, formFieldSelect, tableWrap } from '../../lib/formStyles.js'
 import { createUserAccount, fetchUsers, updateUserProfile } from '../../lib/users.js'
@@ -41,6 +43,8 @@ export default function UsersPage() {
   useEffect(() => {
     loadUsers()
   }, [loadUsers])
+
+  const { page, setPage, paginatedItems, totalCount, pageSize } = useClientPagination(users)
 
   function openCreate() {
     setForm(emptyForm)
@@ -234,7 +238,7 @@ export default function UsersPage() {
                   </td>
                 </tr>
               )}
-              {!loading && users.length === 0 && (
+              {!loading && paginatedItems.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-white/50">
                     No users found.
@@ -242,7 +246,7 @@ export default function UsersPage() {
                 </tr>
               )}
               {!loading &&
-                users.map((u) => (
+                paginatedItems.map((u) => (
                   <tr key={u.id} className="border-t border-white/10 text-white/85">
                     <td className="px-4 py-3">{u.full_name}</td>
                     <td className="px-4 py-3">{u.email}</td>
@@ -290,6 +294,9 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+        {!loading && totalCount > 0 && (
+          <Pagination page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} />
+        )}
       </div>
 
       <Modal
