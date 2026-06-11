@@ -42,7 +42,7 @@ const borrowRequestsItem = {
 
 const borrowingsItem = {
   to: '/app/borrowings',
-  label: 'Borrowings',
+  label: 'Borrowings & Assignments',
   icon: icon(
     <>
       <path d="M21 15a4 4 0 0 1-4 4H8l-5 0" />
@@ -117,7 +117,7 @@ const adminItems = [
 ]
 
 export const navItemsByRole = {
-  staff: [dashboardItem],
+  staff: [dashboardItem, borrowRequestsItem],
   officer: officerItems,
   admin: adminItems
 }

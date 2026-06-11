@@ -27,13 +27,20 @@ export default function WidgetCard({ label, value, hint, tone = 'amber' }) {
       bg: 'bg-rose-500/10',
       text: 'text-rose-200',
       accent: 'bg-rose-400'
+    },
+    violet: {
+      ring: 'ring-violet-500/35',
+      border: 'border-violet-500/25',
+      bg: 'bg-violet-500/10',
+      text: 'text-violet-200',
+      accent: 'bg-violet-400'
     }
   }
 
   const t = map[tone] ?? map.amber
 
   return (
-    <div className={`rounded-2xl border ${t.border} ${t.bg} p-5 ring-1 ${t.ring} shadow-glow`}>
+    <div className={`rounded-2xl border ${t.border} ${t.bg} p-4 sm:p-5 ring-1 ${t.ring} shadow-glow`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-widest text-white/55">{label}</div>

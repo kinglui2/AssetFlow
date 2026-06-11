@@ -3,11 +3,14 @@ import PageHeader from '../../components/ui/PageHeader.jsx'
 import StatusBadge from '../../components/ui/StatusBadge.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { logAudit } from '../../lib/audit.js'
+import { formatExpectedReturn, returnReasonLabel } from '../../lib/issuance.js'
+import { dataTable, filterInput, filterSelect, tableWrap } from '../../lib/formStyles.js'
 import { supabase } from '../../lib/supabase.js'
 
 const reportTypes = [
   { id: 'borrowing_history', label: 'Borrowing History' },
-  { id: 'active_borrowings', label: 'Currently Borrowed' },
+  { id: 'active_borrowings', label: 'Currently Out' },
+  { id: 'staff_assignments', label: 'Staff Assignments' },
   { id: 'inventory', label: 'Equipment Inventory' },
   { id: 'overdue', label: 'Overdue Items' }
 ]
@@ -63,7 +66,7 @@ export default function ReportsPage() {
       if (reportType === 'borrowing_history') {
         let query = supabase
           .from('borrowing_records')
-          .select('borrowed_at, returned_at, status, borrower_name, borrower_department, purpose, equipment(name, asset_tag, categories(name))')
+          .select('borrowed_at, returned_at, status, issuance_type, return_reason, borrower_name, borrower_department, purpose, expected_return_at, equipment(name, asset_tag, categories(name))')
           .order('borrowed_at', { ascending: false })
 
         if (filters.department) query = query.eq('borrower_department', filters.department)
@@ -78,18 +81,44 @@ export default function ReportsPage() {
           (data ?? []).map((r) => ({
             borrowed_at: r.borrowed_at,
             returned_at: r.returned_at || '',
+            issuance_type: r.issuance_type ?? 'temporary',
             status: r.status,
             borrower_name: r.borrower_name,
             borrower_department: r.borrower_department,
             equipment: r.equipment?.name || '',
             category: r.equipment?.categories?.name || '',
-            purpose: r.purpose
+            purpose: r.purpose,
+            expected_return: formatExpectedReturn(r),
+            return_reason: returnReasonLabel(r.return_reason)
           }))
         )
       } else if (reportType === 'active_borrowings') {
         const { data, error: qError } = await supabase.from('active_borrowings').select('*')
         if (qError) throw qError
-        setRows(data ?? [])
+        setRows(
+          (data ?? []).map((r) => ({
+            ...r,
+            expected_return: formatExpectedReturn(r)
+          }))
+        )
+      } else if (reportType === 'staff_assignments') {
+        const { data, error: qError } = await supabase
+          .from('active_borrowings')
+          .select('*')
+          .eq('issuance_type', 'assignment')
+          .order('borrowed_at', { ascending: false })
+        if (qError) throw qError
+        setRows(
+          (data ?? []).map((r) => ({
+            equipment: r.equipment_name,
+            asset_tag: r.asset_tag || '',
+            staff_name: r.borrower_name,
+            department: r.borrower_department,
+            employee_id: r.borrower_employee_id || '',
+            assigned_since: r.borrowed_at,
+            notes: r.purpose
+          }))
+        )
       } else if (reportType === 'inventory') {
         let query = supabase.from('equipment').select('name, serial_number, asset_tag, status, condition, categories(name)').order('name')
         if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
@@ -112,6 +141,7 @@ export default function ReportsPage() {
           .from('borrowing_records')
           .select('borrowed_at, expected_return_at, borrower_name, borrower_department, equipment(name, asset_tag)')
           .eq('status', 'overdue')
+          .eq('issuance_type', 'temporary')
           .order('expected_return_at')
         if (qError) throw qError
 
@@ -144,12 +174,9 @@ export default function ReportsPage() {
     })
   }
 
-  const inputClass =
-    'rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brandAmber-500/40'
-
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Generate and export borrowing, inventory, and overdue reports." />
+      <PageHeader title="Reports" subtitle="Generate and export borrowing, assignment, inventory, and overdue reports." />
 
       {error && (
         <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
@@ -160,7 +187,7 @@ export default function ReportsPage() {
       <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 space-y-4">
         <div>
           <label className="text-xs text-white/60">Report type</label>
-          <select className={`${inputClass} mt-1 w-full md:w-80`} value={reportType} onChange={(e) => setReportType(e.target.value)}>
+          <select className={`${filterSelect} mt-1 md:max-w-xs`} value={reportType} onChange={(e) => setReportType(e.target.value)}>
             {reportTypes.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.label}
@@ -170,31 +197,31 @@ export default function ReportsPage() {
         </div>
 
         {(reportType === 'borrowing_history' || reportType === 'inventory') && (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {reportType === 'borrowing_history' && (
               <>
                 <div>
                   <label className="text-xs text-white/60">Department</label>
-                  <input className={`${inputClass} mt-1 w-full`} value={filters.department} onChange={(e) => setFilters({ ...filters, department: e.target.value })} />
+                  <input className={`${filterInput} mt-1`} value={filters.department} onChange={(e) => setFilters({ ...filters, department: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-xs text-white/60">Borrower</label>
-                  <input className={`${inputClass} mt-1 w-full`} value={filters.borrower} onChange={(e) => setFilters({ ...filters, borrower: e.target.value })} />
+                  <input className={`${filterInput} mt-1`} value={filters.borrower} onChange={(e) => setFilters({ ...filters, borrower: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-xs text-white/60">From date</label>
-                  <input type="date" className={`${inputClass} mt-1 w-full`} value={filters.dateFrom} onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })} />
+                  <input type="date" className={`${filterInput} mt-1`} value={filters.dateFrom} onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-xs text-white/60">To date</label>
-                  <input type="date" className={`${inputClass} mt-1 w-full`} value={filters.dateTo} onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })} />
+                  <input type="date" className={`${filterInput} mt-1`} value={filters.dateTo} onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })} />
                 </div>
               </>
             )}
             {reportType === 'inventory' && (
               <div>
                 <label className="text-xs text-white/60">Category</label>
-                <select className={`${inputClass} mt-1 w-full`} value={filters.categoryId} onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}>
+                <select className={`${filterSelect} mt-1`} value={filters.categoryId} onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}>
                   <option value="">All categories</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -207,7 +234,7 @@ export default function ReportsPage() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap [&>button]:w-full sm:[&>button]:w-auto">
           <button
             type="button"
             onClick={generateReport}
@@ -228,13 +255,13 @@ export default function ReportsPage() {
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className={tableWrap}>
           {rows.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-white/50">
               {loading ? 'Generating report…' : 'Generate a report to see results.'}
             </div>
           ) : (
-            <table className="min-w-full text-sm">
+            <table className={dataTable}>
               <thead className="bg-black/20 text-left text-white/60">
                 <tr>
                   {Object.keys(rows[0]).map((key) => (
@@ -249,7 +276,11 @@ export default function ReportsPage() {
                   <tr key={idx} className="border-t border-white/10 text-white/85">
                     {Object.entries(row).map(([key, value]) => (
                       <td key={key} className="px-4 py-3">
-                        {key === 'status' ? <StatusBadge status={value} /> : String(value ?? '—')}
+                    {['status', 'issuance_type'].includes(key) ? (
+                        <StatusBadge status={value} />
+                      ) : (
+                        String(value ?? '—')
+                      )}
                       </td>
                     ))}
                   </tr>

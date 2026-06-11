@@ -4,6 +4,7 @@ import Modal from '../../components/ui/Modal.jsx'
 import StatusBadge from '../../components/ui/StatusBadge.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { logAudit } from '../../lib/audit.js'
+import { dataTable, formFieldInput, formFieldSelect, tableWrap } from '../../lib/formStyles.js'
 import { createUserAccount, fetchUsers, updateUserProfile } from '../../lib/users.js'
 
 const emptyForm = {
@@ -185,9 +186,6 @@ export default function UsersPage() {
     }
   }
 
-  const inputClass =
-    'mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-brandAmber-500/40'
-
   return (
     <div>
       <PageHeader
@@ -216,8 +214,8 @@ export default function UsersPage() {
       )}
 
       <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+        <div className={tableWrap}>
+          <table className={dataTable}>
             <thead className="bg-black/20 text-left text-white/60">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
@@ -321,19 +319,19 @@ export default function UsersPage() {
         <form id="create-user-form" onSubmit={handleCreate} className="space-y-4">
           <div>
             <label className="text-xs text-white/70">Full name</label>
-            <input className={inputClass} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
+            <input className={formFieldInput} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-white/70">Email</label>
-            <input type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <input type="email" className={formFieldInput} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-white/70">Password</label>
-            <input type="password" className={inputClass} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} minLength={6} required />
+            <input type="password" className={formFieldInput} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} minLength={6} required />
           </div>
           <div>
             <label className="text-xs text-white/70">Role</label>
-            <select className={inputClass} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+            <select className={formFieldSelect} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
               <option value="officer">ICT Officer</option>
               <option value="admin">ICT Administrator</option>
               <option value="staff">Staff</option>
@@ -341,7 +339,7 @@ export default function UsersPage() {
           </div>
           <div>
             <label className="text-xs text-white/70">Department</label>
-            <input className={inputClass} value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+            <input className={formFieldInput} value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
           </div>
         </form>
       </Modal>
@@ -373,15 +371,15 @@ export default function UsersPage() {
         <form id="edit-user-form" onSubmit={handleUpdate} className="space-y-4">
           <div>
             <label className="text-xs text-white/70">Full name</label>
-            <input className={inputClass} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
+            <input className={formFieldInput} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-white/70">Email</label>
-            <input className={inputClass} value={form.email} disabled />
+            <input className={formFieldInput} value={form.email} disabled />
           </div>
           <div>
             <label className="text-xs text-white/70">Role</label>
-            <select className={inputClass} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+            <select className={formFieldSelect} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
               <option value="officer">ICT Officer</option>
               <option value="admin">ICT Administrator</option>
               <option value="staff">Staff</option>
@@ -389,7 +387,7 @@ export default function UsersPage() {
           </div>
           <div>
             <label className="text-xs text-white/70">Department</label>
-            <input className={inputClass} value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+            <input className={formFieldInput} value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
           </div>
         </form>
       </Modal>

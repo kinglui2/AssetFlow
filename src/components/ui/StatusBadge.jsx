@@ -1,19 +1,31 @@
 const styles = {
   available: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-200',
   borrowed: 'bg-sky-500/15 border-sky-500/25 text-sky-200',
+  assigned: 'bg-violet-500/15 border-violet-500/25 text-violet-200',
   under_maintenance: 'bg-amber-500/15 border-amber-500/25 text-amber-200',
   retired: 'bg-white/10 border-white/20 text-white/60',
+  pending: 'bg-amber-500/15 border-amber-500/25 text-amber-200',
+  approved: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-200',
+  rejected: 'bg-rose-500/15 border-rose-500/25 text-rose-200',
+  cancelled: 'bg-white/10 border-white/20 text-white/60',
   active: 'bg-sky-500/15 border-sky-500/25 text-sky-200',
   returned: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-200',
   overdue: 'bg-rose-500/15 border-rose-500/25 text-rose-200',
+  temporary: 'bg-sky-500/15 border-sky-500/25 text-sky-200',
+  assignment: 'bg-violet-500/15 border-violet-500/25 text-violet-200',
   admin: 'bg-brandAmber-500/15 border-brandAmber-500/25 text-brandAmber-200',
   officer: 'bg-sky-500/15 border-sky-500/25 text-sky-200',
   staff: 'bg-white/10 border-white/20 text-white/70'
 }
 
+const labels = {
+  temporary: 'temporary borrow',
+  assignment: 'staff assignment'
+}
+
 export default function StatusBadge({ status }) {
   const key = status ?? 'unknown'
-  const label = String(key).replace(/_/g, ' ')
+  const label = labels[key] ?? String(key).replace(/_/g, ' ')
   const cls = styles[key] ?? 'bg-white/10 border-white/20 text-white/70'
 
   return (

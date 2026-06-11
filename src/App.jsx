@@ -50,7 +50,7 @@ export default function App() {
         <Route
           path="borrow-requests"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'officer']}>
+            <ProtectedRoute allowedRoles={['admin', 'officer', 'staff']}>
               <BorrowRequestsPage />
             </ProtectedRoute>
           }

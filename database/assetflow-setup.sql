@@ -22,6 +22,7 @@ CREATE TYPE user_role AS ENUM ('admin', 'officer', 'staff');
 CREATE TYPE equipment_status AS ENUM (
   'available',
   'borrowed',
+  'assigned',
   'under_maintenance',
   'retired'
 );
@@ -37,6 +38,18 @@ CREATE TYPE borrowing_status AS ENUM (
   'active',
   'returned',
   'overdue'
+);
+
+CREATE TYPE issuance_type AS ENUM (
+  'temporary',
+  'assignment'
+);
+
+CREATE TYPE borrow_request_status AS ENUM (
+  'pending',
+  'approved',
+  'rejected',
+  'cancelled'
 );
 
 
@@ -91,6 +104,7 @@ CREATE TABLE equipment (
 CREATE TABLE borrowing_records (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   equipment_id         uuid NOT NULL REFERENCES equipment(id),
+  issuance_type        issuance_type NOT NULL DEFAULT 'temporary',
   borrower_name        text NOT NULL,
   borrower_department  text NOT NULL,
   borrower_employee_id text,
@@ -101,6 +115,7 @@ CREATE TABLE borrowing_records (
   expected_return_at   timestamptz,
   returned_at          timestamptz,
   return_condition     equipment_condition,
+  return_reason        text,
   issued_by            uuid NOT NULL REFERENCES profiles(id),
   returned_by          uuid REFERENCES profiles(id),
   created_at           timestamptz NOT NULL DEFAULT now()
@@ -117,6 +132,51 @@ CREATE TABLE audit_logs (
   entity_id   uuid,
   details     jsonb,
   created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- -----------------------------------------------------------------------------
+-- 2f. borrow_requests — staff self-service equipment requests
+-- -----------------------------------------------------------------------------
+CREATE TABLE borrow_requests (
+  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id         uuid NOT NULL REFERENCES profiles(id),
+  requester_name       text NOT NULL,
+  requester_department text,
+  category_id          uuid REFERENCES categories(id),
+  equipment_id         uuid REFERENCES equipment(id),
+  purpose              text NOT NULL,
+  needed_from          timestamptz,
+  needed_until         timestamptz,
+  status               borrow_request_status NOT NULL DEFAULT 'pending',
+  reviewer_id          uuid REFERENCES profiles(id),
+  reviewed_at          timestamptz,
+  review_notes         text,
+  borrowing_record_id  uuid REFERENCES borrowing_records(id),
+  created_at           timestamptz NOT NULL DEFAULT now(),
+  updated_at           timestamptz NOT NULL DEFAULT now()
+);
+
+-- -----------------------------------------------------------------------------
+-- 2g. app_settings — organization and system configuration (single row)
+-- -----------------------------------------------------------------------------
+CREATE TABLE app_settings (
+  id                         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  singleton                  boolean NOT NULL DEFAULT true UNIQUE CHECK (singleton = true),
+  company_name               text NOT NULL DEFAULT 'Mirema School',
+  company_tagline            text DEFAULT 'ICT Asset Inventory',
+  company_email              text,
+  company_phone              text,
+  company_address            text,
+  notify_new_borrow_requests boolean NOT NULL DEFAULT true,
+  notify_overdue_returns     boolean NOT NULL DEFAULT true,
+  notify_assignment_changes  boolean NOT NULL DEFAULT false,
+  notification_email         text,
+  default_borrow_days        integer NOT NULL DEFAULT 7 CHECK (default_borrow_days > 0),
+  require_return_date        boolean NOT NULL DEFAULT false,
+  asset_tag_prefix           text DEFAULT 'ICT',
+  allow_staff_requests       boolean NOT NULL DEFAULT true,
+  updated_at                 timestamptz NOT NULL DEFAULT now(),
+  updated_by                 uuid REFERENCES profiles(id)
 );
 
 
@@ -137,6 +197,7 @@ CREATE INDEX idx_borrowing_department  ON borrowing_records(borrower_department)
 CREATE INDEX idx_borrowing_borrowed_at ON borrowing_records(borrowed_at);
 CREATE INDEX idx_borrowing_active      ON borrowing_records(equipment_id)
   WHERE status = 'active';
+CREATE INDEX idx_borrowing_issuance_type ON borrowing_records(issuance_type);
 
 -- Audit logs
 CREATE INDEX idx_audit_user       ON audit_logs(user_id);
@@ -146,6 +207,11 @@ CREATE INDEX idx_audit_created_at ON audit_logs(created_at);
 -- Profiles
 CREATE INDEX idx_profiles_role   ON profiles(role);
 CREATE INDEX idx_profiles_active ON profiles(is_active);
+
+-- Borrow requests
+CREATE INDEX idx_borrow_requests_status      ON borrow_requests(status);
+CREATE INDEX idx_borrow_requests_requester   ON borrow_requests(requester_id);
+CREATE INDEX idx_borrow_requests_created_at  ON borrow_requests(created_at);
 
 
 -- =============================================================================
@@ -182,25 +248,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Sync equipment status when equipment is borrowed or returned
+-- Sync equipment status when equipment is borrowed, assigned, or returned
 CREATE OR REPLACE FUNCTION sync_equipment_on_borrow()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- On new borrowing
+  -- On new issuance
   IF TG_OP = 'INSERT' THEN
     IF NEW.status = 'active' THEN
       UPDATE public.equipment
-      SET status = 'borrowed'
+      SET status = CASE
+        WHEN NEW.issuance_type = 'assignment' THEN 'assigned'::equipment_status
+        ELSE 'borrowed'::equipment_status
+      END
       WHERE id = NEW.equipment_id;
     END IF;
     RETURN NEW;
   END IF;
 
-  -- On borrowing update (return or status change)
+  -- On issuance update (return or status change)
   IF TG_OP = 'UPDATE' THEN
     IF NEW.status = 'active' AND OLD.status NOT IN ('active', 'overdue') THEN
       UPDATE public.equipment
-      SET status = 'borrowed'
+      SET status = CASE
+        WHEN NEW.issuance_type = 'assignment' THEN 'assigned'::equipment_status
+        ELSE 'borrowed'::equipment_status
+      END
       WHERE id = NEW.equipment_id;
 
     ELSIF NEW.status = 'returned' AND OLD.status IN ('active', 'overdue') THEN
@@ -216,7 +288,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- Mark overdue borrowings (run manually or via scheduled Edge Function / cron)
+-- Mark overdue borrowings (temporary only; assignments have no return date)
 CREATE OR REPLACE FUNCTION mark_overdue_borrowings()
 RETURNS integer AS $$
 DECLARE
@@ -225,6 +297,7 @@ BEGIN
   UPDATE public.borrowing_records
   SET status = 'overdue'
   WHERE status = 'active'
+    AND issuance_type = 'temporary'
     AND expected_return_at IS NOT NULL
     AND expected_return_at < now();
 
@@ -244,6 +317,14 @@ CREATE TRIGGER set_profiles_updated_at
 
 CREATE TRIGGER set_equipment_updated_at
   BEFORE UPDATE ON equipment
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER set_borrow_requests_updated_at
+  BEFORE UPDATE ON borrow_requests
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER set_app_settings_updated_at
+  BEFORE UPDATE ON app_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER on_auth_user_created
@@ -267,6 +348,7 @@ CREATE VIEW active_borrowings
 WITH (security_invoker = true) AS
 SELECT
   br.id,
+  br.issuance_type,
   br.borrower_name,
   br.borrower_department,
   br.borrower_employee_id,
@@ -299,6 +381,35 @@ JOIN categories c ON c.id = e.category_id
 GROUP BY c.name, e.status
 ORDER BY c.name, e.status;
 
+CREATE VIEW borrow_requests_detail
+WITH (security_invoker = true) AS
+SELECT
+  br.id,
+  br.requester_id,
+  br.requester_name,
+  br.requester_department,
+  br.category_id,
+  br.equipment_id,
+  br.purpose,
+  br.needed_from,
+  br.needed_until,
+  br.status,
+  br.reviewer_id,
+  br.reviewed_at,
+  br.review_notes,
+  br.borrowing_record_id,
+  br.created_at,
+  br.updated_at,
+  c.name AS category_name,
+  e.name AS equipment_name,
+  e.asset_tag AS equipment_asset_tag,
+  e.status AS equipment_status,
+  reviewer.full_name AS reviewer_name
+FROM borrow_requests br
+LEFT JOIN categories c ON c.id = br.category_id
+LEFT JOIN equipment e ON e.id = br.equipment_id
+LEFT JOIN profiles reviewer ON reviewer.id = br.reviewer_id;
+
 
 -- =============================================================================
 -- STEP 7: Enable Row Level Security (RLS)
@@ -309,6 +420,8 @@ ALTER TABLE categories        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE equipment         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE borrowing_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE borrow_requests   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_settings      ENABLE ROW LEVEL SECURITY;
 
 
 -- =============================================================================
@@ -426,6 +539,51 @@ CREATE POLICY "Officers and admins can insert audit logs"
     AND user_id = auth.uid()
   );
 
+-- -----------------------------------------------------------------------------
+-- borrow_requests
+-- -----------------------------------------------------------------------------
+CREATE POLICY "View borrow requests"
+  ON borrow_requests FOR SELECT
+  TO authenticated
+  USING (
+    requester_id = auth.uid()
+    OR get_user_role() IN ('admin', 'officer')
+  );
+
+CREATE POLICY "Create borrow requests"
+  ON borrow_requests FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    requester_id = auth.uid()
+    AND get_user_role() IN ('admin', 'officer', 'staff')
+  );
+
+CREATE POLICY "Cancel own pending requests"
+  ON borrow_requests FOR UPDATE
+  TO authenticated
+  USING (requester_id = auth.uid() AND status = 'pending')
+  WITH CHECK (requester_id = auth.uid() AND status = 'cancelled');
+
+CREATE POLICY "Officers manage borrow requests"
+  ON borrow_requests FOR UPDATE
+  TO authenticated
+  USING (get_user_role() IN ('admin', 'officer'))
+  WITH CHECK (get_user_role() IN ('admin', 'officer'));
+
+-- -----------------------------------------------------------------------------
+-- app_settings
+-- -----------------------------------------------------------------------------
+CREATE POLICY "Authenticated users can view app settings"
+  ON app_settings FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Admins can update app settings"
+  ON app_settings FOR UPDATE
+  TO authenticated
+  USING (get_user_role() = 'admin')
+  WITH CHECK (get_user_role() = 'admin');
+
 
 -- =============================================================================
 -- STEP 9: Grant permissions to Supabase roles
@@ -438,14 +596,19 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON categories TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON equipment         TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON borrowing_records TO authenticated;
 GRANT SELECT, INSERT ON audit_logs                TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON borrow_requests   TO authenticated;
+GRANT SELECT, UPDATE ON app_settings              TO authenticated;
 
 GRANT SELECT ON active_borrowings TO authenticated;
 GRANT SELECT ON equipment_summary TO authenticated;
+GRANT SELECT ON borrow_requests_detail TO authenticated;
 
 GRANT USAGE ON TYPE user_role           TO authenticated;
 GRANT USAGE ON TYPE equipment_status    TO authenticated;
 GRANT USAGE ON TYPE equipment_condition TO authenticated;
 GRANT USAGE ON TYPE borrowing_status   TO authenticated;
+GRANT USAGE ON TYPE issuance_type      TO authenticated;
+GRANT USAGE ON TYPE borrow_request_status TO authenticated;
 
 GRANT EXECUTE ON FUNCTION get_user_role()            TO authenticated;
 GRANT EXECUTE ON FUNCTION mark_overdue_borrowings() TO authenticated;
@@ -465,6 +628,8 @@ INSERT INTO categories (name, description) VALUES
   ('Extension Cable',   'Extension cords and power cables'),
   ('Testing Equipment', 'Diagnostic and testing tools'),
   ('Other',             'Other ICT equipment');
+
+INSERT INTO app_settings (singleton) VALUES (true);
 
 
 -- =============================================================================

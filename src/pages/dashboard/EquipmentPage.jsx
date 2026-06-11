@@ -5,6 +5,7 @@ import StatusBadge from '../../components/ui/StatusBadge.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { isAdmin } from '../../config/navigation.jsx'
 import { logAudit } from '../../lib/audit.js'
+import { dataTable, filterInput, filterSelect, formFieldInput, formFieldSelect, tableWrap } from '../../lib/formStyles.js'
 import { supabase } from '../../lib/supabase.js'
 
 const emptyForm = {
@@ -143,9 +144,6 @@ export default function EquipmentPage() {
     }
   }
 
-  const inputClass =
-    'mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-brandAmber-500/40'
-
   return (
     <div>
       <PageHeader
@@ -177,27 +175,28 @@ export default function EquipmentPage() {
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <input
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brandAmber-500/40"
+          className={`${filterInput} flex-1`}
           placeholder="Search by name, serial, or asset tag…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white outline-none"
+          className={`${filterSelect} sm:min-w-[11rem]`}
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="">All statuses</option>
           <option value="available">Available</option>
           <option value="borrowed">Borrowed</option>
+          <option value="assigned">Assigned</option>
           <option value="under_maintenance">Under maintenance</option>
           <option value="retired">Retired</option>
         </select>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+        <div className={tableWrap}>
+          <table className={dataTable}>
             <thead className="bg-black/20 text-left text-white/60">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
@@ -273,11 +272,11 @@ export default function EquipmentPage() {
           <form id="equipment-form" onSubmit={handleSave} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             <div>
               <label className="text-xs text-white/70">Name</label>
-              <input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <input className={formFieldInput} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div>
               <label className="text-xs text-white/70">Category</label>
-              <select className={inputClass} value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} required>
+              <select className={formFieldSelect} value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} required>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -285,20 +284,20 @@ export default function EquipmentPage() {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-xs text-white/70">Serial number</label>
-                <input className={inputClass} value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} />
+                <input className={formFieldInput} value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs text-white/70">Asset tag</label>
-                <input className={inputClass} value={form.asset_tag} onChange={(e) => setForm({ ...form, asset_tag: e.target.value })} />
+                <input className={formFieldInput} value={form.asset_tag} onChange={(e) => setForm({ ...form, asset_tag: e.target.value })} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-xs text-white/70">Condition</label>
-                <select className={inputClass} value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
+                <select className={formFieldSelect} value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
                   <option value="excellent">Excellent</option>
                   <option value="good">Good</option>
                   <option value="fair">Fair</option>
@@ -307,9 +306,10 @@ export default function EquipmentPage() {
               </div>
               <div>
                 <label className="text-xs text-white/70">Status</label>
-                <select className={inputClass} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                <select className={formFieldSelect} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                   <option value="available">Available</option>
                   <option value="borrowed">Borrowed</option>
+                  <option value="assigned">Assigned</option>
                   <option value="under_maintenance">Under maintenance</option>
                   <option value="retired">Retired</option>
                 </select>
@@ -317,7 +317,7 @@ export default function EquipmentPage() {
             </div>
             <div>
               <label className="text-xs text-white/70">Notes</label>
-              <textarea className={inputClass} rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              <textarea className={formFieldInput} rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
           </form>
         </Modal>

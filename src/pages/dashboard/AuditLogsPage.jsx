@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import PageHeader from '../../components/ui/PageHeader.jsx'
+import { dataTable, filterInput, filterSelect, tableWrap } from '../../lib/formStyles.js'
 import { supabase } from '../../lib/supabase.js'
 
 const actionOptions = [
@@ -11,11 +12,22 @@ const actionOptions = [
   'equipment_created',
   'equipment_updated',
   'equipment_issued',
+  'equipment_assigned',
   'equipment_returned',
+  'assignment_ended',
   'report_exported',
   'category_created',
   'category_updated',
-  'category_deleted'
+  'category_deleted',
+  'profile_updated',
+  'password_changed',
+  'settings_company_updated',
+  'settings_notifications_updated',
+  'settings_asset_config_updated',
+  'borrow_request_created',
+  'borrow_request_cancelled',
+  'borrow_request_approved',
+  'borrow_request_rejected'
 ]
 
 export default function AuditLogsPage() {
@@ -63,9 +75,6 @@ export default function AuditLogsPage() {
     loadLogs()
   }, [loadLogs])
 
-  const inputClass =
-    'rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-brandAmber-500/40'
-
   return (
     <div>
       <PageHeader
@@ -80,11 +89,11 @@ export default function AuditLogsPage() {
       )}
 
       <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div>
             <label className="text-xs text-white/60">User</label>
             <select
-              className={`${inputClass} mt-1 w-full`}
+              className={`${filterSelect} mt-1`}
               value={filters.userId}
               onChange={(e) => setFilters({ ...filters, userId: e.target.value })}
             >
@@ -99,7 +108,7 @@ export default function AuditLogsPage() {
           <div>
             <label className="text-xs text-white/60">Action</label>
             <select
-              className={`${inputClass} mt-1 w-full`}
+              className={`${filterSelect} mt-1`}
               value={filters.action}
               onChange={(e) => setFilters({ ...filters, action: e.target.value })}
             >
@@ -115,7 +124,7 @@ export default function AuditLogsPage() {
             <label className="text-xs text-white/60">From date</label>
             <input
               type="date"
-              className={`${inputClass} mt-1 w-full`}
+              className={`${filterInput} mt-1`}
               value={filters.dateFrom}
               onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
             />
@@ -124,7 +133,7 @@ export default function AuditLogsPage() {
             <label className="text-xs text-white/60">To date</label>
             <input
               type="date"
-              className={`${inputClass} mt-1 w-full`}
+              className={`${filterInput} mt-1`}
               value={filters.dateTo}
               onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
             />
@@ -133,15 +142,15 @@ export default function AuditLogsPage() {
         <button
           type="button"
           onClick={loadLogs}
-          className="mt-4 rounded-xl bg-brandAmber-500 px-4 py-2 text-sm font-semibold text-black hover:bg-brandAmber-400"
+          className="mt-4 w-full rounded-xl bg-brandAmber-500 px-4 py-2 text-sm font-semibold text-black hover:bg-brandAmber-400 sm:w-auto"
         >
           Apply Filters
         </button>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+        <div className={tableWrap}>
+          <table className={dataTable}>
             <thead className="bg-black/20 text-left text-white/60">
               <tr>
                 <th className="px-4 py-3 font-medium">Timestamp</th>

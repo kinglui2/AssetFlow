@@ -116,6 +116,27 @@ export function AuthProvider({ children }) {
         if (error) throw error
         setProfile(null)
         setSession(null)
+      },
+      async refreshProfile() {
+        const userId = session?.user?.id
+        if (!userId) return null
+        const userProfile = await fetchProfile(userId)
+        setProfile(userProfile)
+        return userProfile
+      },
+      async updateOwnProfile(updates) {
+        const userId = session?.user?.id
+        if (!userId) throw new Error('Not signed in')
+
+        const { data, error } = await supabase.from('profiles').update(updates).eq('id', userId).select().single()
+        if (error) throw error
+        setProfile(data)
+        return data
+      },
+      async changePassword(newPassword) {
+        const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+        if (error) throw error
+        return data
       }
     }),
     [session, profile, loading]
