@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/ui/PageHeader.jsx'
 import Modal from '../../components/ui/Modal.jsx'
 import StatusBadge from '../../components/ui/StatusBadge.jsx'
@@ -39,6 +40,7 @@ function formatDateTime(value) {
 
 export default function BorrowRequestsPage() {
   const { user, profile, role } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const isOfficer = canAccessOfficerModules(role)
   const [requests, setRequests] = useState([])
   const [categories, setCategories] = useState([])
@@ -81,6 +83,15 @@ export default function BorrowRequestsPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    if (loading || isOfficer) return
+    if (searchParams.get('action') !== 'submit') return
+
+    setForm({ ...emptyRequestForm, category_id: categories[0]?.id ?? '' })
+    setSubmitOpen(true)
+    setSearchParams({}, { replace: true })
+  }, [loading, isOfficer, searchParams, setSearchParams, categories])
 
   const filteredEquipmentForReview = useMemo(() => {
     if (!reviewTarget) return availableEquipment

@@ -136,8 +136,7 @@ export default function LoginPage() {
         </button>
 
         <div className="text-sm text-white/70">
-          Don’t have an account?{' '}
-          <Link to="/signup" className="hover:text-brandAmber-300">Create account</Link>
+          Need an account? Contact your ICT administrator to request access.
         </div>
       </form>
     </AuthShell>

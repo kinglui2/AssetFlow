@@ -233,10 +233,14 @@ RETURNS user_role AS $$
   SELECT role FROM public.profiles WHERE id = auth.uid();
 $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
--- Auto-create profile when a new auth user is registered
+-- Auto-create profile when a new auth user is registered (admin-provisioned only)
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
+  IF COALESCE(NEW.raw_user_meta_data->>'provisioned_by_admin', 'false') <> 'true' THEN
+    RAISE EXCEPTION 'Public registration is disabled. Contact an ICT administrator for an account.';
+  END IF;
+
   INSERT INTO public.profiles (id, full_name, email, role)
   VALUES (
     NEW.id,
@@ -644,6 +648,11 @@ INSERT INTO app_settings (singleton) VALUES (true);
 --
 --   UPDATE public.profiles
 --   SET role = 'admin', full_name = 'ICT Administrator'
+--   WHERE email = 'admin@yourorganization.com';
+--
+--   UPDATE auth.users
+--   SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb)
+--     || jsonb_build_object('provisioned_by_admin', true)
 --   WHERE email = 'admin@yourorganization.com';
 --
 -- C) Verify:

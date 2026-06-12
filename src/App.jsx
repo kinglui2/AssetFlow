@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from './pages/auth/LoginPage.jsx'
-import SignupPage from './pages/auth/SignupPage.jsx'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage.jsx'
 import AppLayout from './components/layout/AppLayout.jsx'
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx'
@@ -26,7 +25,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/signup" element={<Navigate to="/login" replace />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
       <Route

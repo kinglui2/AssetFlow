@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/ui/PageHeader.jsx'
 import Modal from '../../components/ui/Modal.jsx'
 import StatusBadge from '../../components/ui/StatusBadge.jsx'
@@ -25,12 +26,14 @@ const emptyIssueForm = {
 
 const listFilters = [
   { id: 'all', label: 'All active' },
+  { id: 'overdue', label: 'Overdue' },
   { id: ISSUANCE_TYPES.temporary, label: 'Temporary borrows' },
   { id: ISSUANCE_TYPES.assignment, label: 'Staff assignments' }
 ]
 
 export default function BorrowingsPage() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [activeRecords, setActiveRecords] = useState([])
   const [availableEquipment, setAvailableEquipment] = useState([])
   const [loading, setLoading] = useState(true)
@@ -65,7 +68,13 @@ export default function BorrowingsPage() {
     loadData()
   }, [loadData])
 
+  useEffect(() => {
+    const filter = searchParams.get('filter')
+    if (filter === 'overdue') setListFilter('overdue')
+  }, [searchParams])
+
   const filteredRecords = useMemo(() => {
+    if (listFilter === 'overdue') return activeRecords.filter((row) => row.status === 'overdue')
     if (listFilter === 'all') return activeRecords
     return activeRecords.filter((row) => row.issuance_type === listFilter)
   }, [activeRecords, listFilter])
@@ -76,6 +85,21 @@ export default function BorrowingsPage() {
     setIssueOpen(true)
     setError('')
   }
+
+  useEffect(() => {
+    if (loading) return
+
+    const action = searchParams.get('action')
+    if (!action) return
+
+    if (action === 'assign') {
+      openIssue(ISSUANCE_TYPES.assignment)
+    } else if (action === 'issue') {
+      openIssue(ISSUANCE_TYPES.temporary)
+    }
+
+    setSearchParams({}, { replace: true })
+  }, [loading, searchParams, setSearchParams, availableEquipment])
 
   async function handleIssue(e) {
     e.preventDefault()

@@ -94,17 +94,6 @@ export function AuthProvider({ children }) {
         })
         return data
       },
-      async signUp({ email, password, fullName }) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName, role: 'officer' }
-          }
-        })
-        if (error) throw error
-        return data
-      },
       async resetPassword(email) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/login`
