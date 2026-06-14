@@ -40,6 +40,19 @@ const borrowRequestsItem = {
   )
 }
 
+const borrowingHistoryItem = {
+  to: '/app/borrowing-history',
+  label: 'Borrowing History',
+  icon: icon(
+    <>
+      <path d="M12 8v4l3 3" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12a9 9 0 0 1 9-9c2.5 0 4.74 1.04 6.36 2.7" />
+      <path d="M21 3v4h-4" />
+    </>
+  )
+}
+
 const borrowingsItem = {
   to: '/app/borrowings',
   label: 'Borrowings & Assignments',
@@ -117,7 +130,7 @@ const adminItems = [
 ]
 
 export const navItemsByRole = {
-  staff: [dashboardItem, borrowRequestsItem],
+  staff: [dashboardItem, borrowRequestsItem, borrowingHistoryItem],
   officer: officerItems,
   admin: adminItems
 }

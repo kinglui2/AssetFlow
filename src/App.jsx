@@ -8,6 +8,7 @@ import DashboardPage from './pages/dashboard/DashboardPage.jsx'
 import EquipmentPage from './pages/dashboard/EquipmentPage.jsx'
 import BorrowRequestsPage from './pages/dashboard/BorrowRequestsPage.jsx'
 import BorrowingsPage from './pages/dashboard/BorrowingsPage.jsx'
+import BorrowingHistoryPage from './pages/dashboard/BorrowingHistoryPage.jsx'
 import ReportsPage from './pages/dashboard/ReportsPage.jsx'
 import UsersPage from './pages/dashboard/UsersPage.jsx'
 import AuditLogsPage from './pages/dashboard/AuditLogsPage.jsx'
@@ -54,6 +55,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+         <Route
+  path="borrowing-history"
+  element={
+    <ProtectedRoute allowedRoles={['admin', 'officer', 'staff']}>
+      <BorrowingHistoryPage />
+    </ProtectedRoute>
+  }
+/>
+
         <Route
           path="borrowings"
           element={
